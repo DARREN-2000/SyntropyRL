@@ -4,6 +4,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - run: pip install uv && uv pip install --system -e .[dev]
       - run: make lint test
