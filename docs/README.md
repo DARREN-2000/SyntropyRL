@@ -1,0 +1,1 @@
+This directory contains the Markdown documentation files for SyntropyRL, which are automatically rendered by GitHub Pages.
