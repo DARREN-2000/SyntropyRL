@@ -1,0 +1,26 @@
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# tooling
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# generated run logs and artifacts
+examples/*.jsonl
+*.syntropyrl.json
+scripts/_diag.js
+
+# editors and os
+.vscode/
+.idea/
+.DS_Store

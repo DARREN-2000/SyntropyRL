@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>syntropyrl - find out why your RL run isn't learning</title>
+<meta name="description" content="A diagnostic layer for LLM reinforcement learning. 13 detectors for silent RL failures: trainer/generator logprob divergence, reward hacking, entropy collapse, advantage collapse. Zero dependencies, MIT licensed." />
+<meta property="og:title" content="syntropyrl - why isn't my RL run learning?" />
+<meta property="og:description" content="Your RL run doesn't crash. It just quietly fails to learn. syntropyrl names the failure mode in plain English." />
+<link rel="stylesheet" href="./assets/styles.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="./index.html"><span class="brand-mark" aria-hidden="true">&#129466;</span> syntropyrl</a>
+    <nav class="site-nav">
+      <a class="current" href="./index.html">Overview</a>
+      <a href="./playground.html">Playground</a>
+      <a href="./atlas.html">Atlas</a>
+      <a class="btn-ghost" href="https://github.com/syntropyrl/syntropyrl">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ------------------------------------------------------------------ hero -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">Open source &middot; MIT &middot; zero dependencies</p>
+      <h1>Your RL run isn't learning. syntropyrl tells you why.</h1>
+      <p class="lede">RL post-training rarely crashes. It just quietly fails to learn, and you find out
+        eleven hours later. syntropyrl watches your run and names the failure mode in plain English:
+        the logprob mismatch between your trainer and your generator, the phrase your grader
+        secretly loves, the entropy that died at step 240.</p>
+      <div class="hero-badges">
+        <span class="pill pill-green">13 detectors, all tested</span>
+        <span class="pill pill-blue">0 dependencies</span>
+        <span class="pill">TRL &middot; verl &middot; OpenRLHF &middot; any dict</span>
+      </div>
+      <div class="install">
+        <span class="prompt" aria-hidden="true">$</span>
+        <code id="install-cmd">pip install syntropyrl</code>
+        <button class="copy-btn" id="copy-btn" type="button" data-copy="pip install syntropyrl">Copy</button>
+      </div>
+      <div class="hero-cta">
+        <a class="btn-primary" href="./playground.html">Run the playground &rarr;</a>
+        <a class="btn-secondary" href="./atlas.html">Read the Failure Atlas</a>
+      </div>
+    </div>
+
+    <div>
+      <div class="terminal">
+        <div class="terminal-bar">
+          <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+          <span class="terminal-title">syntropyrl demo reward_hacking</span>
+        </div>
+        <pre class="terminal-body" id="replay" aria-live="polite" aria-label="Example syntropyrl output"></pre>
+      </div>
+      <div class="replay-controls">
+        <button class="replay-btn" id="replay-btn" type="button">Replay</button>
+        <span class="replay-note">Real output from <code>syntropyrl demo reward_hacking</code></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------------ why -->
+<section class="band">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>There are sixteen ways to train a policy and no way to debug one</h2>
+      <p>The RL tooling ecosystem grew fast in one direction. Trainers, environments, and
+        async rollout engines are abundant. The layer that tells you <em>why a run is failing</em>
+        was never built.</p>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <div class="card-icon icon-blue" aria-hidden="true">&#128230;</div>
+        <h3>Trainers assume you're fine</h3>
+        <p>TRL, verl, OpenRLHF, and a dozen others will happily train a policy against a
+          broken advantage signal for a week. They log the metrics. Interpreting them is
+          left as an exercise.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon icon-orange" aria-hidden="true">&#128202;</div>
+        <h3>Trackers are RL-blind</h3>
+        <p>W&amp;B and TensorBoard draw beautiful lines. They have no opinion about the fact
+          that 78% of your GRPO groups have zero advantage, which is the only thing that
+          matters on that chart.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon icon-red" aria-hidden="true">&#128172;</div>
+        <h3>The knowledge lives in Discord</h3>
+        <p>The people who know these failure modes learned them at 2am. That knowledge sits
+          in scattered threads and one excellent blog post. It has never been written down
+          as something you can run.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------------ how -->
+<section class="band band-soft" id="how">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Three lines, then read the diagnosis</h2>
+      <p>syntropyrl does not wrap your trainer, patch your model, or own your loop. You hand it
+        the metrics you already log, and it hands back a diagnosis.</p>
+    </div>
+    <div class="steps">
+      <div>
+        <div class="step-num">1</div>
+        <h3>Instrument</h3>
+        <p>One object. No config file, no server, no account.</p>
+<pre class="code"><span class="k">from</span> syntropyrl <span class="k">import</span> <span class="f">Doctor</span>
+
+doctor = <span class="f">Doctor</span>()</pre>
+      </div>
+      <div>
+        <div class="step-num">2</div>
+        <h3>Observe</h3>
+        <p>Pass whatever you have. Missing fields just disable the detectors that need them.</p>
+<pre class="code"><span class="k">for</span> i, batch <span class="k">in</span> <span class="f">enumerate</span>(trainer.train()):
+    doctor.<span class="f">observe</span>(
+        step=i,
+        rollouts=batch.rollouts,  <span class="c"># optional</span>
+        **batch.metrics,          <span class="c"># what you log</span>
+    )</pre>
+      </div>
+      <div>
+        <div class="step-num">3</div>
+        <h3>Read</h3>
+        <p>Plain English, with the numbers that justify it and a fix to try first.</p>
+<pre class="code"><span class="f">print</span>(doctor.<span class="f">report</span>())
+
+<span class="c"># or fail loudly in CI:</span>
+Doctor(raise_on_critical=<span class="k">True</span>)</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- --------------------------------------------------------------- rld-014 -->
+<section class="band">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">The expensive one</p>
+      <h2>Your trainer and your generator disagree about the same tokens</h2>
+      <p class="lede" style="margin:16px 0 24px">Inference engines compute logprobs with different
+        kernels than your training forward pass. Chunked prefill, paged attention, and parallel
+        reductions all shift the numbers slightly. Your importance ratios are then computed against
+        logprobs the trainer never produced.</p>
+      <p style="color:var(--text-2);margin-bottom:24px">Nothing crashes. Loss curves look normal.
+        The policy gradient is simply wrong, and you find out after the run.
+        syntropyrl measures the gap every step, and correlates it with sequence length to tell a
+        kernel difference apart from a prompt-boundary bug.</p>
+      <a class="btn-secondary" href="./atlas.html#RLD-014">Read RLD-014 in the Atlas &rarr;</a>
+    </div>
+    <div>
+<pre class="code" style="margin:0"><span class="c"># Pre-flight, before you spend money</span>
+<span class="k">from</span> syntropyrl <span class="k">import</span> (
+    <span class="f">check_logprob_parity</span>, <span class="f">parity_report</span>,
+)
+
+result = <span class="f">check_logprob_parity</span>(
+    generator_logprobs=vllm_scores,   <span class="c"># callable</span>
+    trainer_logprobs=hf_scores,       <span class="c"># callable</span>
+    samples=probe_texts,              <span class="c"># incl. a long one</span>
+)
+<span class="f">print</span>(<span class="f">parity_report</span>(result))
+<span class="k">assert</span> result[<span class="s">"verdict"</span>] == <span class="s">"pass"</span>, result[<span class="s">"code"</span>]
+
+<span class="c"># verdict           : FAIL  RLD-014</span>
+<span class="c"># mean gap          : 0.0081200</span>
+<span class="c"># corr(gap, length) : 0.71</span>
+<span class="c"># likely causes     :</span>
+<span class="c">#   chunked prefill or paged-attention</span>
+<span class="c">#   boundary (gap grows with length)</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------ detectors -->
+<section class="band band-soft" id="detectors">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>The thirteen detectors</h2>
+      <p>Every one of these has a documented Atlas entry, a simulated reproduction, and a test
+        asserting it fires on that reproduction and stays silent on a healthy run. Thresholds are
+        published because a diagnosis you cannot audit is a rumour.</p>
+    </div>
+    <div class="table-wrap scroll-x">
+      <table>
+        <thead>
+          <tr><th>Code</th><th>Failure mode</th><th>Family</th><th>Fires when</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono"><a href="./atlas.html#RLD-014">RLD-014</a></td><td>Trainer/generator logprob divergence<span class="sub">The most expensive bug in RL post-training</span></td><td><span class="tag tag-numerics">numerics</span></td><td class="mono">mean gap &gt; 3e-3</td></tr>
+          <tr><td class="mono"><a href="./atlas.html#RLD-092">RLD-092</a></td><td>Chat template / tokenization mismatch<span class="sub">Divergence concentrated in the first 8 tokens</span></td><td><span class="tag tag-numerics">numerics</span></td><td class="mono">head/tail ratio &ge; 8</td></tr>
+          <tr><td class="mono"><a href="./atlas.html#RLD-071">RLD-071</a></td><td>Gradient pathology<span class="sub">NaN, or a spike that undoes hours of training</span></td><td><span class="tag tag-numerics">numerics</span></td><td class="mono">peak &gt; 20&times; median</td></tr>
+          <tr><td class="mono"><a href="./atlas.html#RLD-001">RLD-001</a></td><td>Advantage collapse<span class="sub">Identical rewards in a group mean zero gradient</span></td><td><span class="tag tag-optimization">optimization</span></td><td class="mono">degenerate groups &ge; 55%</td></tr>
+          <tr><td class="mono"><a href="./atlas.html#RLD-021">RLD-021</a></td><td>KL blowup<span class="sub">The policy escapes the trust region</span></td><td><span class="tag tag-optimization">optimization</span></td><td class="mono">KL &ge; 0.5 and 5&times; growth</td></tr>
+          <tr><td class="mono"><a href="./atlas.html#RLD-055">RLD-055</a></td><td>Clip saturation<span class="sub">You generate rollouts, then discard the gradient</span></td><td><span class="tag tag-optimization">optimization</span></td><td class="mono">clip_frac &ge; 0.30</td></tr>
+          <tr><td class="mono"><a href="./atlas.html#RLD-084">RLD-084</a></td><td>Value function divergence<span class="sub">A diverging critic poisons every advantage</span></td><td><span class="tag tag-optimization">optimization</span></td><td class="mono">2nd half &gt; 1.5&times; 1st</td></tr>
+          <tr><td class="mono"><a href="./atlas.html#RLD-031">RLD-031</a></td><td>Reward hacking<span class="sub">Proxy climbs, ground truth doesn't move</span></td><td><span class="tag tag-reward">reward</span></td><td class="mono">&Delta;reward &ge; 0.12, truth flat</td></tr>
+          <tr><td class="mono"><a href="./atlas.html#RLD-033">RLD-033</a></td><td>Length exploit<span class="sub">Talking more pays more</span></td><td><span class="tag tag-reward">reward</span></td><td class="mono">r(len, reward) &ge; 0.45</td></tr>
+          <tr><td class="mono"><a href="./atlas.html#RLD-060">RLD-060</a></td><td>Dead reward signal<span class="sub">The verifier is silently returning a constant</span></td><td><span class="tag tag-reward">reward</span></td><td class="mono">reward_std &le; 1e-4</td></tr>
+          <tr><td class="mono"><a href="./atlas.html#RLD-042">RLD-042</a></td><td>Truncation bias<span class="sub">Thinking longer gets scored as failure</span></td><td><span class="tag tag-reward">reward</span></td><td class="mono">&ge;12% truncated, 15% gap</td></tr>
+          <tr><td class="mono"><a href="./atlas.html#RLD-007">RLD-007</a></td><td>Entropy collapse<span class="sub">Exploration dies, and it doesn't come back</span></td><td><span class="tag tag-distribution">distribution</span></td><td class="mono">drop &ge; 0.55 nats</td></tr>
+          <tr><td class="mono"><a href="./atlas.html#RLD-018">RLD-018</a></td><td>Mode collapse<span class="sub">Byte-identical rollouts inside a group</span></td><td><span class="tag tag-distribution">distribution</span></td><td class="mono">duplicates &ge; 35%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- --------------------------------------------------------------- atlas -->
+<section class="band">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>The Failure Atlas is the real project</h2>
+      <p>Detectors answer "is this happening?". The Atlas answers "what is it, why does it happen,
+        and what do I do?" - one page per failure mode, written for someone nine hours into
+        debugging. The detector registry and the Atlas are generated from the same source, so the
+        docs cannot drift from the code.</p>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <span class="code-chip">RLD-031</span>
+        <h3 style="margin-top:12px">Reward hacking</h3>
+        <p>"The best-looking run you have ever had. Then you read the outputs and they are nonsense
+          that happens to satisfy the grader."</p>
+        <p style="margin-top:12px"><a href="./atlas.html#RLD-031">Symptom, causes, fixes &rarr;</a></p>
+      </div>
+      <div class="card">
+        <span class="code-chip">RLD-007</span>
+        <h3 style="margin-top:12px">Entropy collapse</h3>
+        <p>"Fast early progress, then a hard plateau. Once exploration dies, extra compute buys
+          nothing and no amount of tuning brings the diversity back."</p>
+        <p style="margin-top:12px"><a href="./atlas.html#RLD-007">Symptom, causes, fixes &rarr;</a></p>
+      </div>
+      <div class="card">
+        <span class="code-chip">RLD-042</span>
+        <h3 style="margin-top:12px">Truncation bias</h3>
+        <p>"You are teaching the model that thinking is punished. It learns to answer shorter, which
+          looks like the model getting worse at reasoning, because it is."</p>
+        <p style="margin-top:12px"><a href="./atlas.html#RLD-042">Symptom, causes, fixes &rarr;</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ---------------------------------------------------------- principles -->
+<section class="band band-soft">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Five decisions this project will not revisit</h2>
+      <p>syntropyrl runs inside other people's training images, at hour nine of a run they cannot
+        restart. That constrains everything.</p>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <div class="card-icon icon-green" aria-hidden="true">&#10003;</div>
+        <h3>Zero dependencies, forever</h3>
+        <p>Pure standard library. It will never fight your torch, numpy, or transformers pin. CI
+          asserts the dependency list is empty.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon icon-blue" aria-hidden="true">&#128737;</div>
+        <h3>A broken detector can't kill your run</h3>
+        <p>Every detector is called inside a guard. If one raises, it is recorded and skipped. A
+          diagnostic tool that crashes training is worse than no tool.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon icon-purple" aria-hidden="true">&#129517;</div>
+        <h3>Partial instrumentation works</h3>
+        <p>Every detector declares what it needs. Give it only <code>reward_mean</code> and you get
+          the reward detectors. Nothing errors because a field is missing.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon icon-orange" aria-hidden="true">&#128272;</div>
+        <h3>No monkeypatching</h3>
+        <p>No import hooks, no patched trainers, no magic. You call one method in your loop and you
+          can read exactly what it does.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon icon-red" aria-hidden="true">&#129300;</div>
+        <h3>Honest about uncertainty</h3>
+        <p>Detectors stay silent unless confident, and a clean report says so explicitly: no
+          <em>known</em> failure mode fired, which is not the same as a good run.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon icon-blue" aria-hidden="true">&#128200;</div>
+        <h3>Numbers, not vibes</h3>
+        <p>"Entropy collapsed" is useless. "Entropy fell 1.42 &rarr; 0.11 and 78% of groups now have
+          zero advantage" is a lead you can act on.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------- integrations -->
+<section class="band">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">Integrations</p>
+      <h2>Bring your own trainer</h2>
+      <p style="color:var(--text-2);margin:16px 0 24px">Frameworks disagree about metric names.
+        <code>kl</code>, <code>objective/kl</code>, <code>actor/kl_loss</code>, and
+        <code>policy/approx_kl</code> are the same quantity. syntropyrl ships an alias table so you can
+        pass a raw metrics dict from any of them and the right detectors light up.</p>
+      <p style="color:var(--text-2)">There is a drop-in TRL callback, an alias-based adapter that
+        covers verl and OpenRLHF, and a JSONL reader for runs that already finished.</p>
+    </div>
+    <div>
+<pre class="code" style="margin:0"><span class="c"># TRL: one callback</span>
+<span class="k">from</span> syntropyrl.integrations <span class="k">import</span> <span class="f">trl_callback</span>
+
+trainer = <span class="f">GRPOTrainer</span>(..., callbacks=[<span class="f">trl_callback</span>()])
+
+<span class="c"># verl / OpenRLHF / any metrics dict</span>
+<span class="k">from</span> syntropyrl.integrations <span class="k">import</span> <span class="f">from_metrics</span>
+
+doctor.<span class="f">observe</span>(step=i, **<span class="f">from_metrics</span>(raw))
+
+<span class="c"># or a run that already finished</span>
+$ syntropyrl diagnose run.jsonl</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ----------------------------------------------------------------- cta -->
+<section class="band band-soft">
+  <div class="wrap narrow" style="text-align:center">
+    <h2>See it catch something</h2>
+    <p class="lede" style="margin:16px auto 28px">The playground runs the real detectors in your
+      browser against thirteen simulated failure modes. Pick a broken run, watch the diagnosis land,
+      then turn on the fix and watch it go quiet.</p>
+    <div class="hero-cta" style="justify-content:center">
+      <a class="btn-primary" href="./playground.html">Open the playground &rarr;</a>
+      <a class="btn-secondary" href="https://github.com/syntropyrl/syntropyrl">Star on GitHub</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <span>syntropyrl - MIT licensed, zero dependencies.</span>
+    <span class="footer-links">
+      <a href="./playground.html">Playground</a>
+      <a href="./atlas.html">Atlas</a>
+      <a href="https://github.com/syntropyrl/syntropyrl/blob/main/CONTRIBUTING.md">Contribute</a>
+      <a href="https://github.com/syntropyrl/syntropyrl">GitHub</a>
+    </span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  // ---------------------------------------------------------------- copy
+  var btn = document.getElementById("copy-btn");
+  btn.addEventListener("click", function () {
+    var text = btn.getAttribute("data-copy");
+    var done = function () {
+      btn.textContent = "Copied";
+      btn.classList.add("copied");
+      setTimeout(function () { btn.textContent = "Copy"; btn.classList.remove("copied"); }, 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, done);
+    } else {
+      var ta = document.createElement("textarea");
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      document.body.removeChild(ta); done();
+    }
+  });
+
+  // -------------------------------------------------------------- replay
+  // Verbatim output from `syntropyrl demo reward_hacking --seed 7`.
+  var LINES = [
+    ["$ syntropyrl demo reward_hacking", "t-dim"],
+    ["", ""],
+    ["  simulating 300 steps of GRPO on a verifier the policy can game...", "t-dim"],
+    ["", ""],
+    ["  \u{1FA7A} syntropyrl  \u2014  step 300  \u2014  2 critical, 1 warning", "t-bold"],
+    ["  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500", "t-dim"],
+    ["", ""],
+    ["  [CRITICAL] RLD-031  Reward hacking (proxy/truth divergence)", "t-crit"],
+    ["    Reward climbed 0.402 -> 0.905. Meanwhile accuracy went 0.291 ->", ""],
+    ["    0.297, which is flat. The policy is optimizing your proxy, not", ""],
+    ["    the task. Rollouts containing \"therefore the answer is obviously\"", ""],
+    ["    score 1.010 versus 0.318 without it, and 88.9% of the batch now", ""],
+    ["    contains it.", ""],
+    ["      fix  Hold out a verifier the policy never trains against", "t-green"],
+    ["      fix  Read the 20 highest-reward completions by hand", "t-green"],
+    ["      see  syntropyrl.dev/atlas.html#RLD-031", "t-blue"],
+    ["", ""],
+    ["  [CRITICAL] RLD-001  Advantage collapse (degenerate groups)", "t-crit"],
+    ["    81.2% of GRPO groups have identical rewards, so their advantages", ""],
+    ["    are exactly zero (advantage std 0.094). You are paying for", ""],
+    ["    rollouts that carry no gradient.", ""],
+    ["      fix  Filter prompts to pass rates between 0.2 and 0.8", "t-green"],
+    ["      see  syntropyrl.dev/atlas.html#RLD-001", "t-blue"],
+    ["", ""],
+    ["  [WARN]     RLD-007  Entropy collapse", "t-orange"],
+    ["    Policy entropy fell from 1.418 to 0.372 (down 1.05 nats), and", ""],
+    ["    within-group advantage std is now 0.094. Exploration is nearly", ""],
+    ["    dead, and this is close to irreversible.", ""],
+    ["      fix  Add or raise the entropy bonus (0.001-0.01)", "t-green"],
+    ["      see  syntropyrl.dev/atlas.html#RLD-007", "t-blue"],
+    ["", ""],
+    ["  3 diagnoses across 300 steps. 13 detectors ran, 0 errored.", "t-dim"]
+  ];
+
+  var host = document.getElementById("replay");
+  var replayBtn = document.getElementById("replay-btn");
+  var timer = null;
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function paintAll() {
+    host.textContent = "";
+    for (var i = 0; i < LINES.length; i++) addLine(i);
+  }
+  function addLine(i) {
+    var span = document.createElement("span");
+    if (LINES[i][1]) span.className = LINES[i][1];
+    span.textContent = LINES[i][0] + "\n";
+    host.appendChild(span);
+  }
+  function play() {
+    if (timer) { clearInterval(timer); timer = null; }
+    if (reduce) { paintAll(); return; }
+    host.textContent = "";
+    var i = 0;
+    var caret = document.createElement("span");
+    caret.className = "cursor";
+    timer = setInterval(function () {
+      if (caret.parentNode) host.removeChild(caret);
+      if (i >= LINES.length) {
+        clearInterval(timer); timer = null;
+        host.appendChild(caret);
+        return;
+      }
+      addLine(i);
+      host.appendChild(caret);
+      host.scrollTop = host.scrollHeight;
+      i++;
+    }, 88);
+  }
+
+  replayBtn.addEventListener("click", play);
+
+  // Only start when the terminal is actually on screen.
+  if ("IntersectionObserver" in window) {
+    var seen = false;
+    var io = new IntersectionObserver(function (entries) {
+      for (var e = 0; e < entries.length; e++) {
+        if (entries[e].isIntersecting && !seen) { seen = true; play(); }
+      }
+    }, { threshold: 0.25 });
+    io.observe(host);
+  } else {
+    play();
+  }
+})();
+</script>
+</body>
+</html>

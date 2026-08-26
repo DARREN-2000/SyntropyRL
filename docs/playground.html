@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Playground - syntropyrl</title>
+<meta name="description" content="Run the real syntropyrl detectors in your browser against thirteen simulated RL failure modes, then turn on the fix and watch the diagnosis go quiet." />
+<link rel="stylesheet" href="./assets/styles.css" />
+</head>
+<body>
+<a class="skip-link" href="#pg-main">Skip to content</a>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="./index.html"><span class="brand-mark" aria-hidden="true">&#129466;</span> syntropyrl</a>
+    <nav class="site-nav">
+      <a href="./index.html">Overview</a>
+      <a class="current" href="./playground.html">Playground</a>
+      <a href="./atlas.html">Atlas</a>
+      <a class="btn-ghost" href="https://github.com/syntropyrl/syntropyrl">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<section class="pg-hero">
+  <div class="wrap">
+    <p class="eyebrow">Playground</p>
+    <h1>Break a training run on purpose</h1>
+    <p class="lede" style="max-width:760px">This page runs the actual detectors - ported line for line
+      from the Python package, same thresholds - against a simulated GRPO run. Pick a failure mode,
+      run it, read the diagnosis. Then apply the fix in the sidebar and watch the diagnosis
+      disappear. No install, no backend, no network calls.</p>
+  </div>
+</section>
+
+<main id="pg-main" class="wrap pg-layout">
+
+  <!-- ------------------------------------------------------------ sidebar -->
+  <div class="controls">
+    <div class="panel">
+      <p class="panel-title">Scenario</p>
+      <div class="scenario-list" id="scenario-list" role="group" aria-label="Choose a failure mode"></div>
+      <p class="chart-foot" id="scenario-blurb" style="margin-top:12px"></p>
+    </div>
+
+    <div class="panel">
+      <p class="panel-title">Run</p>
+      <div class="field-row">
+        <label for="steps">Training steps</label>
+        <output id="steps-out" for="steps">300</output>
+      </div>
+      <input type="range" id="steps" min="100" max="600" step="50" value="300" />
+      <div class="field-row" style="margin-top:16px">
+        <label for="seed">Seed</label>
+        <output id="seed-out" for="seed">7</output>
+      </div>
+      <input type="range" id="seed" min="1" max="64" step="1" value="7" />
+      <div class="run-row">
+        <button class="btn-primary" id="run-btn" type="button">Run 300 steps</button>
+        <button class="btn-secondary" id="reset-btn" type="button">Reset fixes</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <p class="panel-title">Apply a fix</p>
+      <label class="toggle">
+        <input type="checkbox" id="opt-entropy" />
+        <span class="toggle-text">Entropy bonus<small>keeps exploration alive</small></span>
+      </label>
+      <label class="toggle">
+        <input type="checkbox" id="opt-length" />
+        <span class="toggle-text">Length penalty<small>caps the verbosity payoff</small></span>
+      </label>
+      <label class="toggle">
+        <input type="checkbox" id="opt-kl" />
+        <span class="toggle-text">Stronger KL penalty<small>holds the trust region</small></span>
+      </label>
+      <label class="toggle">
+        <input type="checkbox" id="opt-holdout" />
+        <span class="toggle-text">Held-out verifier<small>ungameable ground truth</small></span>
+      </label>
+      <label class="toggle">
+        <input type="checkbox" id="opt-limit" />
+        <span class="toggle-text">Raise max_new_tokens<small>900 &rarr; 1400</small></span>
+      </label>
+      <label class="toggle">
+        <input type="checkbox" id="opt-lr" />
+        <span class="toggle-text">Lower learning rate<small>1e-6 &rarr; 3e-7</small></span>
+      </label>
+      <label class="toggle">
+        <input type="checkbox" id="opt-groups" />
+        <span class="toggle-text">Group size 12<small>fewer ties, fewer dead groups</small></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- --------------------------------------------------------------- main -->
+  <div>
+    <div class="verdict" id="verdict">
+      <div class="verdict-icon" aria-hidden="true">&#8943;</div>
+      <div class="verdict-text"><strong>Ready</strong><span>Pick a scenario and press Run.</span></div>
+    </div>
+
+    <div class="panel">
+      <p class="panel-title">Training signals</p>
+      <div class="chart-grid" id="charts"></div>
+      <div class="legend">
+        <span>Dashed line = detector threshold</span>
+        <span>Red tick = step where a diagnosis fired</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <p class="panel-title">Diagnosis timeline</p>
+      <div class="timeline" id="timeline"></div>
+    </div>
+
+    <div class="panel">
+      <p class="panel-title">Report</p>
+      <div class="terminal">
+        <div class="terminal-bar">
+          <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+          <span class="terminal-title" id="report-title">doctor.report()</span>
+        </div>
+        <pre class="terminal-body tall" id="report" aria-live="polite"></pre>
+      </div>
+    </div>
+
+    <div class="panel">
+      <p class="panel-title">Highest-reward rollouts at the final step</p>
+      <p class="chart-foot" style="margin:0 0 12px">Reading these by hand is still the single most
+        effective RL debugging technique. syntropyrl highlights the phrase whose presence predicts
+        higher reward.</p>
+      <div class="rollouts" id="rollouts"></div>
+    </div>
+
+    <div class="panel">
+      <p class="panel-title">Fidelity</p>
+      <p class="chart-foot" id="fidelity" style="margin:0"></p>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <span>syntropyrl - MIT licensed, zero dependencies.</span>
+    <span class="footer-links">
+      <a href="./index.html">Overview</a>
+      <a href="./atlas.html">Atlas</a>
+      <a href="https://github.com/syntropyrl/syntropyrl">GitHub</a>
+    </span>
+  </div>
+</footer>
+
+<script src="./assets/engine.js"></script>
+<script src="./assets/app.js"></script>
+</body>
+</html>
