@@ -3,113 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SyntropyRL | Interactive Playground</title>
+    <title>SyntropyRL | Live Diagnostics</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #030712; color: #f8fafc; }
-        .font-mono { font-family: 'JetBrains Mono', monospace; }
-        .glass { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .log-enter { animation: slideIn 0.3s ease-out forwards; }
-        @keyframes slideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #ffffff; color: #111827; }
+        .font-mono { font-family: 'Fira Code', monospace; }
+        .sidebar { border-right: 1px solid #e5e7eb; height: 100vh; position: fixed; width: 250px; overflow-y: auto; }
+        .main-content { margin-left: 250px; padding: 2rem; }
+        .panel { border: 1px solid #e2e8f0; border-radius: 6px; background: #ffffff; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+        .log-terminal { background: #0f172a; color: #f8fafc; font-family: 'Fira Code', monospace; font-size: 0.85rem; padding: 1rem; overflow-y: auto; height: 300px; border-radius: 6px; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body>
 
-    <!-- Nav -->
-    <nav class="w-full z-50 glass border-b-0 border-white/5 shrink-0">
-        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-            <a href="index.html" class="flex items-center gap-2 font-bold text-xl tracking-tight text-white hover:opacity-80 transition-opacity">
-                <i data-lucide="activity" class="text-purple-400"></i>
-                <span>Syntropy<span class="text-slate-400">RL</span></span>
-            </a>
-            <div class="flex items-center gap-4">
-                <span class="text-sm font-medium text-purple-400 bg-purple-400/10 px-3 py-1 rounded-full border border-purple-500/20">
-                    Live Demo Environment
-                </span>
-            </div>
+    <nav class="sidebar bg-slate-50 p-6">
+        <div class="font-semibold text-lg mb-6 tracking-tight">SyntropyRL</div>
+        <div class="space-y-3 text-sm text-slate-600">
+            <a href="index.html" class="block hover:text-slate-900">Getting Started</a>
+            <a href="atlas.html" class="block hover:text-slate-900">Failure Atlas</a>
+            <a href="playground.html" class="block text-blue-600 font-medium">Live Diagnostics</a>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-64px)] overflow-hidden">
-        
-        <!-- Controls (Left) -->
-        <div class="lg:col-span-3 space-y-4 flex flex-col">
-            <div class="glass p-5 rounded-xl border border-white/10">
-                <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <i data-lucide="cpu" class="w-5 h-5 text-blue-400"></i> Simulation Control
-                </h2>
-                <div class="space-y-3">
-                    <button id="btn-start" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
-                        <i data-lucide="play" class="w-4 h-4"></i> Start PPO Training
-                    </button>
-                    <button id="btn-stop" class="w-full glass hover:bg-white/10 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2" disabled>
-                        <i data-lucide="square" class="w-4 h-4"></i> Stop
-                    </button>
+    <main class="main-content h-screen flex flex-col max-w-6xl">
+        <div class="mb-6 pb-4 border-b border-slate-200">
+            <h1 class="text-2xl font-semibold text-slate-900">Live Training Diagnostics</h1>
+            <p class="text-slate-500 text-sm mt-1">Simulate an RL training loop and observe real-time failure detection.</p>
+        </div>
+
+        <div class="flex gap-6 flex-1 min-h-0">
+            
+            <!-- Controls -->
+            <div class="w-64 flex flex-col gap-4">
+                <div class="panel p-4">
+                    <div class="font-medium text-sm mb-3 text-slate-900">Simulation Control</div>
+                    <button id="btn-start" class="w-full bg-slate-900 text-white text-sm font-medium py-2 px-4 rounded hover:bg-slate-800 transition-colors mb-2">Run Healthy Epochs</button>
+                    <button id="btn-stop" class="w-full bg-slate-100 text-slate-600 text-sm font-medium py-2 px-4 rounded hover:bg-slate-200 transition-colors" disabled>Halt Training</button>
+                </div>
+                
+                <div class="panel p-4">
+                    <div class="font-medium text-sm mb-3 text-slate-900">Inject Pathologies</div>
+                    <button id="btn-hack" class="w-full text-left bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-medium py-2 px-3 rounded mb-2 transition-colors">1. Reward Hacking</button>
+                    <button id="btn-collapse" class="w-full text-left bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-medium py-2 px-3 rounded mb-2 transition-colors">2. Entropy Collapse</button>
+                    <button id="btn-kl" class="w-full text-left bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-medium py-2 px-3 rounded transition-colors">3. KL Divergence Spike</button>
                 </div>
             </div>
 
-            <div class="glass p-5 rounded-xl border border-white/10 flex-1">
-                <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <i data-lucide="test-tube" class="w-5 h-5 text-purple-400"></i> Inject Anomalies
-                </h2>
-                <p class="text-xs text-slate-400 mb-4">Click to simulate common RL failure modes. SyntropyRL will attempt to detect them in real-time.</p>
-                <div class="space-y-3">
-                    <button id="btn-hack" class="w-full bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 border border-orange-500/30 font-medium py-2 px-4 rounded-lg transition-colors text-sm text-left">
-                        1. Reward Hacking Spike
-                    </button>
-                    <button id="btn-collapse" class="w-full bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 font-medium py-2 px-4 rounded-lg transition-colors text-sm text-left">
-                        2. Policy Entropy Collapse
-                    </button>
-                    <button id="btn-kl" class="w-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 font-medium py-2 px-4 rounded-lg transition-colors text-sm text-left">
-                        3. Catastrophic KL Divergence
-                    </button>
+            <!-- Charts & Logs -->
+            <div class="flex-1 flex flex-col gap-6 min-w-0">
+                <div class="panel p-4 flex-1 min-h-[300px] relative">
+                    <canvas id="rlChart"></canvas>
+                </div>
+                
+                <div class="log-terminal" id="terminal">
+                    <div class="text-slate-400">SyntropyRL Diagnostics Engine v1.0.0</div>
+                    <div class="text-slate-400">Status: Awaiting telemetry...</div>
                 </div>
             </div>
-        </div>
 
-        <!-- Telemetry Charts (Center) -->
-        <div class="lg:col-span-6 glass rounded-xl border border-white/10 p-5 flex flex-col">
-            <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                <i data-lucide="line-chart" class="w-5 h-5 text-emerald-400"></i> Live Telemetry
-            </h2>
-            <div class="flex-1 min-h-0 relative">
-                <canvas id="rlChart"></canvas>
-            </div>
-            <div class="mt-4 grid grid-cols-3 gap-2 text-center">
-                <div class="bg-black/30 rounded p-2 border border-white/5">
-                    <div class="text-xs text-slate-400">Current Reward</div>
-                    <div id="stat-reward" class="text-lg font-mono font-bold text-emerald-400">0.00</div>
-                </div>
-                <div class="bg-black/30 rounded p-2 border border-white/5">
-                    <div class="text-xs text-slate-400">KL Divergence</div>
-                    <div id="stat-kl" class="text-lg font-mono font-bold text-blue-400">0.00</div>
-                </div>
-                <div class="bg-black/30 rounded p-2 border border-white/5">
-                    <div class="text-xs text-slate-400">Entropy</div>
-                    <div id="stat-entropy" class="text-lg font-mono font-bold text-rose-400">1.00</div>
-                </div>
-            </div>
         </div>
-
-        <!-- SyntropyRL Terminal (Right) -->
-        <div class="lg:col-span-3 glass rounded-xl border border-white/10 flex flex-col overflow-hidden">
-            <div class="bg-[#1a1b26] border-b border-white/10 px-4 py-2 flex items-center gap-2">
-                <i data-lucide="terminal" class="w-4 h-4 text-slate-400"></i>
-                <span class="text-xs font-mono text-slate-400">syntropyrl_diagnostics.log</span>
-            </div>
-            <div id="terminal" class="flex-1 p-4 bg-[#1a1b26] font-mono text-xs overflow-y-auto space-y-2">
-                <div class="text-slate-500">Initialize SyntropyRL Doctor...</div>
-                <div class="text-emerald-400">Ready. Listening to training loop telemetry...</div>
-            </div>
-        </div>
-        
     </main>
 
     <script src="assets/playground.js"></script>
-    <script>lucide.createIcons();</script>
 </body>
 </html>
